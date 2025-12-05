@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -19,22 +19,20 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10.14.0
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install dependencies
         working-directory: ./Frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Build Project
+      - name: Build frontend
         working-directory: ./Frontend
         run: pnpm run build:client
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5107' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
-      - name: Copy files to VPS
+      - name: Copy build files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -44,7 +42,7 @@ jobs:
           target: ${{ secrets.PROJECT_DIR }}/frontend
           strip_components: 3
 
-      - name: Restart Frontend Server
+      - name: Restart frontend container
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -52,5 +50,4 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.PROJECT_DIR }}
-            docker compose restart frontend || docker compose up -d frontend
-
+            docker compose up -d --build frontend
